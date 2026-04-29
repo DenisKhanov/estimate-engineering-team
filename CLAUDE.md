@@ -1,49 +1,47 @@
-# Apartment Renovation Estimate Agent Team
+# Apartment Renovation Estimate Subagents
 
-Проект предназначен только для подготовки строительных смет ремонта квартир по проектным PDF.
+Этот проект предназначен только для подготовки строительных смет ремонта квартир по проектным PDF.
 
-## Основной сценарий
+## Режим работы
 
-Пользователь передает один или несколько PDF проекта квартиры. Команда извлекает объемы, формирует работы и материалы, собирает Excel-смету без цен и проверяет результат.
+Проект использует стандартные Claude Code subagents:
 
-## Запуск
+- subagents лежат в `.claude/agents/`;
+- project skills лежат в `.claude/skills/`;
+- главный агент `router-estimator` управляет специализированными subagents.
 
-```bash
-tmux new -s estimate-team
-claude
-```
+Отдельный командный режим с несколькими равноправными участниками в сценарии работы не используем. Пользователь обращается к `router-estimator`, а он сам делегирует этапы нужным subagents.
 
-`.claude/settings.json` должен содержать `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` и `teammateMode: tmux`.
+## Главный агент
 
-## Точка входа
-
-Главный управляющий агент:
+Точка входа:
 
 ```text
 router-estimator
 ```
 
-Пример задачи:
+Пример запроса:
 
 ```text
-Создай Agent Team с router-estimator.
-Задание: "По PDF проекта квартиры составь Excel-смету работ и черновых материалов без цен"
+Используй router-estimator.
+По PDF проекта квартиры составь Excel-смету работ и черновых материалов без цен.
+PDF лежат здесь: /path/to/project-pdfs
 ```
 
-## Агенты
+## Subagents
 
-| # | Агент | Назначение | Модель |
-|---|---|---|---|
-| 1 | `router-estimator` | Управляет сметным pipeline и финальной выдачей | opus |
-| 2 | `pdf-takeoff-agent` | Извлекает листы проекта и первичные объемы из векторных PDF | opus |
-| 3 | `quantity-surveyor-agent` | Проверяет и нормализует объемы | opus |
-| 4 | `works-estimator-agent` | Формирует вкладку `Работы` без цен | opus |
-| 5 | `materials-estimator-agent` | Формирует вкладку `Материалы` без цен | opus |
-| 6 | `norms-research-agent` | Проверяет нормативную логику ГЭСН/ФЕР и расходные нормы | opus |
-| 7 | `xlsx-builder-agent` | Собирает итоговый Excel | sonnet |
-| 8 | `estimate-auditor-agent` | Проверяет формулы, источники объемов, пропуски и двойной счет | opus |
+| Агент | Роль |
+|---|---|
+| `router-estimator` | Главный управляющий агент |
+| `pdf-takeoff-agent` | Извлекает листы проекта и первичные объемы из PDF |
+| `quantity-surveyor-agent` | Проверяет и нормализует объемы |
+| `works-estimator-agent` | Формирует черновик вкладки `Работы` |
+| `materials-estimator-agent` | Формирует черновик вкладки `Материалы` |
+| `norms-research-agent` | Проверяет нормативную логику ГЭСН/ФЕР и нормы расхода |
+| `xlsx-builder-agent` | Собирает итоговый Excel |
+| `estimate-auditor-agent` | Проверяет смету перед выдачей |
 
-## Цепочка
+## Последовательность
 
 ```text
 router-estimator
@@ -56,23 +54,36 @@ router-estimator
   -> estimate-auditor-agent
 ```
 
+При `critical` замечаниях аудитора `router-estimator` возвращает задачу на нужный этап.
+
 ## Skills
 
-Доменные skills проекта:
+Project skills:
 
-- `.agents/skills/apartment-project-pdf-takeoff/`
-- `.agents/skills/apartment-estimate-works/`
-- `.agents/skills/apartment-estimate-materials/`
-- `.agents/skills/gesn-fer-renovation-norms/`
+```text
+.claude/skills/apartment-project-pdf-takeoff/
+.claude/skills/apartment-estimate-works/
+.claude/skills/apartment-estimate-materials/
+.claude/skills/gesn-fer-renovation-norms/
+```
 
-Внешние зависимости skills: `pdf`, `xlsx`. Они зафиксированы в `skills-lock.json`. Прочие универсальные skills не используются.
+Внешние зависимости skills:
+
+- `pdf`;
+- `xlsx`.
+
+Они зафиксированы в `skills-lock.json`.
 
 ## Runtime
+
+Агенты передают результаты через `agent-runtime/`:
 
 ```text
 agent-runtime/shared/project-index.json
 agent-runtime/shared/extracted-quantities.json
+agent-runtime/shared/takeoff-summary.md
 agent-runtime/shared/normalized-quantities.json
+agent-runtime/shared/quantity-checks.md
 agent-runtime/shared/works-draft.json
 agent-runtime/shared/materials-draft.json
 agent-runtime/shared/norms-notes.md
@@ -80,11 +91,11 @@ agent-runtime/shared/audit-report.md
 agent-runtime/outputs/final-estimate.xlsx
 ```
 
-## Правила
+## Обязательные правила
 
 - Цены агентами не заполняются.
 - В Excel должны быть колонки `Цена за ед., руб.` и `Сумма, руб.`.
 - Суммы и итоги должны быть формулами.
 - Каждый объем должен иметь источник: PDF, страницу, лист проекта или явное допущение.
 - Неподтвержденные объемы и нормы выносятся на проверку.
-- ГЭСН/ФЕР используются для нормативной логики и проверки единиц/состава работ, а не для автоматического заполнения цен.
+- ГЭСН/ФЕР используются для проверки логики, единиц и состава работ, а не для автоматического заполнения цен.
