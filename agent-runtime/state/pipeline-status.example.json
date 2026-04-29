@@ -1,0 +1,18 @@
+{
+  "pipeline": "router-estimator",
+  "status": "not_started",
+  "current_step": null,
+  "input_files": [],
+  "artifacts": {
+    "project_index": "agent-runtime/shared/project-index.json",
+    "extracted_quantities": "agent-runtime/shared/extracted-quantities.json",
+    "normalized_quantities": "agent-runtime/shared/normalized-quantities.json",
+    "works_draft": "agent-runtime/shared/works-draft.json",
+    "materials_draft": "agent-runtime/shared/materials-draft.json",
+    "norms_notes": "agent-runtime/shared/norms-notes.md",
+    "audit_report": "agent-runtime/shared/audit-report.md",
+    "final_estimate": "agent-runtime/outputs/final-estimate.xlsx"
+  },
+  "open_questions": [],
+  "critical_findings": []
+}

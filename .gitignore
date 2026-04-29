@@ -1,0 +1,10 @@
+.idea/
+.codex
+.DS_Store
+agent-runtime/shared/*
+agent-runtime/outputs/*
+agent-runtime/messages/*
+agent-runtime/state/*
+!agent-runtime/messages/message-template.md
+!agent-runtime/state/pipeline-status.example.json
+.claude/settings.local.json
